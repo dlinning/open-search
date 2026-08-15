@@ -22,10 +22,10 @@ export function registerControllers(
  * Helper to register all routes defined in a controller's strongly-typed dictionary.
  */
 function registerController(fastify: FastifyInstance, controller: IController): void {
-	var controllerPrefix = controller.params?.urlPrefix ?? "";
+	let controllerPrefix = controller.params?.urlPrefix ?? "";
 	const hasPrefix = typeof controllerPrefix === "string" && controllerPrefix.length > 0;
 
-	if (hasPrefix && controllerPrefix.startsWith("/") == false) {
+	if (hasPrefix && controllerPrefix.startsWith("/") === false) {
 		controllerPrefix = `/${controllerPrefix}`;
 	}
 

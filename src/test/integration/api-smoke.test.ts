@@ -1,6 +1,6 @@
-import { ApiResponseEnvelope } from "@core/controllers/base.controller";
 import { SearchResponseDto } from "@domain-types/search-response.types";
 import { registerAppContainer } from "@root/bootstrap";
+import { IApiResponseEnvelope } from "@root/core/interfaces/controller.interface";
 import { createServer } from "@root/server";
 import { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -66,7 +66,7 @@ describe("API Smoke Integration Tests", () => {
 			expect(response.headers["x-correlation-id"]).toBeDefined();
 			expect(response.headers["x-search-id"]).toBeDefined();
 
-			const body = JSON.parse(response.payload) as ApiResponseEnvelope<SearchResponseDto>;
+			const body = JSON.parse(response.payload) as IApiResponseEnvelope<SearchResponseDto>;
 			expect(body.success).toBe(true);
 			expect(body.data).toBeDefined();
 
@@ -98,7 +98,7 @@ describe("API Smoke Integration Tests", () => {
 			});
 
 			expect(response.statusCode).toBe(200);
-			const body = JSON.parse(response.payload) as ApiResponseEnvelope<SearchResponseDto>;
+			const body = JSON.parse(response.payload) as IApiResponseEnvelope<SearchResponseDto>;
 			expect(body.success).toBe(true);
 
 			const searchData = body.data!;
@@ -150,7 +150,7 @@ describe("API Smoke Integration Tests", () => {
 			});
 
 			expect(response.statusCode).toBe(202);
-			const body = JSON.parse(response.payload) as ApiResponseEnvelope<{ eventId: string }>;
+			const body = JSON.parse(response.payload) as IApiResponseEnvelope<{ eventId: string }>;
 			expect(body.success).toBe(true);
 			expect(body.message).toBe("Event accepted for processing");
 			expect(body.data?.eventId).toBeDefined();
@@ -170,7 +170,7 @@ describe("API Smoke Integration Tests", () => {
 			});
 
 			expect(response.statusCode).toBe(200);
-			const body = JSON.parse(response.payload) as ApiResponseEnvelope<{
+			const body = JSON.parse(response.payload) as IApiResponseEnvelope<{
 				processed: string;
 				tags?: readonly string[];
 			}>;
