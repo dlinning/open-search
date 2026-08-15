@@ -1,27 +1,31 @@
-import { BaseController } from "@controllers/base.controller";
-import { ControllerRoutes } from "@interfaces/controller.interface";
+import { BaseController } from "@core/controllers/base.controller";
+import { ControllerRoutes, FastifyRouteHandler } from "@interfaces/controller.interface";
 import { SearchProviderRegistry } from "@providers/provider.registry";
 
 export class HealthController extends BaseController {
 	constructor(private readonly providerRegistry: SearchProviderRegistry) {
-		super();
+		super({
+			urlPrefix: "/health",
+		});
 	}
 
-	public readonly routes: ControllerRoutes = {
-		healthRoot: {
-			method: "GET",
-			path: "/health",
-			handler: async (_req, reply) => {
-				void reply.status(200).send({
-					status: "ok",
-					uptime: process.uptime(),
-					timestamp: new Date().toISOString(),
-				});
-			},
+	handleHealth: FastifyRouteHandler = async (_req, reply) => {
+		void reply.status(200).send({
+			status: "ok",
+			uptime: process.uptime(),
+			timestamp: new Date().toISOString(),
+		});
+	};
+
+	public readonly routes: ControllerRoutes = [
+		{
+			method: "get",
+			path: "/",
+			handler: this.handleHealth,
 		},
-		readiness: {
-			method: "GET",
-			path: "/health/readiness",
+		{
+			method: "get",
+			path: "/readiness",
 			handler: async (_req, reply) => {
 				const providers = this.providerRegistry.listAvailable();
 				const checks: Record<string, boolean> = {};
@@ -50,5 +54,5 @@ export class HealthController extends BaseController {
 				});
 			},
 		},
-	};
+	];
 }

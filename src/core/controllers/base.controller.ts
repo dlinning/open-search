@@ -1,21 +1,29 @@
 import { APP_CONSTANTS } from "@config/constants";
-import { ControllerRoutes, HttpMethod, RouteHandler } from "@interfaces/controller.interface";
+import {
+	ControllerRoutes,
+	IApiResponseEnvelope,
+	IController,
+	IControllerConstructorParams,
+} from "@interfaces/controller.interface";
 import { UserContext } from "@typing/search-request.types";
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { FastifyReply, FastifyRequest } from "fastify";
 
-export interface ApiResponseEnvelope<T = unknown> {
-	readonly success: boolean;
-	readonly data?: T;
-	readonly message?: string;
-	readonly metadata?: Readonly<Record<string, unknown>>;
-}
-
-export abstract class BaseController {
+/**
+ * Basic class for Controllers, that all Controllers must implement.
+ */
+export abstract class BaseController implements IController {
 	/**
 	 * Strongly-typed dictionary of routes registered by this controller.
 	 */
 	public abstract readonly routes: ControllerRoutes;
 
+	readonly params: IControllerConstructorParams | undefined;
+
+	constructor(params: IControllerConstructorParams) {
+		this.params = { ...params };
+	}
+
+	//#region Protected / Internal methods
 	/**
 	 * Sends a 200 OK response with a standard data envelope.
 	 */
@@ -24,7 +32,7 @@ export abstract class BaseController {
 		data: T,
 		metadata?: Readonly<Record<string, unknown>>
 	): void {
-		const response: ApiResponseEnvelope<T> = {
+		const response: IApiResponseEnvelope<T> = {
 			success: true,
 			data,
 			metadata,
@@ -40,7 +48,7 @@ export abstract class BaseController {
 		data: T,
 		message = "Resource successfully created"
 	): void {
-		const response: ApiResponseEnvelope<T> = {
+		const response: IApiResponseEnvelope<T> = {
 			success: true,
 			data,
 			message,
@@ -56,7 +64,7 @@ export abstract class BaseController {
 		message = "Request accepted for background processing",
 		details?: T
 	): void {
-		const response: ApiResponseEnvelope<T> = {
+		const response: IApiResponseEnvelope<T> = {
 			success: true,
 			message,
 			data: details,
@@ -101,46 +109,5 @@ export abstract class BaseController {
 	protected getUserContext(req: FastifyRequest): UserContext {
 		return req.userContext;
 	}
-}
-
-/**
- * Helper to register a route on Fastify dynamically using any HTTP method.
- */
-export function registerRoute(
-	fastify: FastifyInstance,
-	method: HttpMethod,
-	endpoint: string,
-	handler: RouteHandler
-): void {
-	const normalizedMethod = method.toLowerCase() as
-		"get" | "post" | "put" | "patch" | "delete" | "head" | "options";
-	fastify[normalizedMethod](endpoint, handler);
-}
-
-/**
- * Helper to register all routes defined in a controller's strongly-typed dictionary.
- */
-export function registerController(
-	fastify: FastifyInstance,
-	controller: BaseController,
-	prefix = ""
-): void {
-	for (const route of Object.values(controller.routes)) {
-		const rawPath = `${prefix}/${route.path}`.replace(/\/+/g, "/");
-		const endpoint =
-			rawPath.endsWith("/") && rawPath.length > 1 ? rawPath.slice(0, -1) : rawPath;
-		registerRoute(fastify, route.method, endpoint, route.handler);
-	}
-}
-
-/**
- * Batch registration helper for multiple controllers.
- */
-export function registerControllers(
-	fastify: FastifyInstance,
-	registrations: ReadonlyArray<{ readonly controller: BaseController; readonly prefix?: string }>
-): void {
-	for (const { controller, prefix } of registrations) {
-		registerController(fastify, controller, prefix);
-	}
+	//#endregion Protected / Internal methods
 }

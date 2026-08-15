@@ -4,9 +4,11 @@ import { PostgresAnalyticsSink } from "@analytics/sinks/postgres.sink";
 import { RedisClientFactory } from "@cache/redis.client";
 import { env } from "@config/env";
 import { ExampleController } from "@controllers/example.controller";
-import { HealthController } from "@controllers/health.controller";
-import { SearchController } from "@controllers/search.controller";
-import { TrackingController } from "@controllers/tracking.controller";
+import { HealthController } from "@core/controllers/health.controller";
+import { SearchController } from "@core/controllers/search.controller";
+import { TrackingController } from "@core/controllers/tracking.controller";
+import { IApplicationContainer } from "@core/types/app-container";
+import { SearchProviderId } from "@domain-types/provider.types";
 import { ExampleExperiment } from "@experiments/definitions/example.experiment";
 import { ExperimentEvaluator } from "@experiments/experiment-evaluator";
 import { logger } from "@observability/logger";
@@ -17,30 +19,24 @@ import { ExampleService } from "@services/example.service";
 import { PersonalizationService } from "@services/personalization.service";
 import { SearchService } from "@services/search.service";
 import { TrackingService } from "@services/tracking.service";
-import { SearchProviderId } from "@domain-types/provider.types";
 
-export interface ApplicationContainer {
-	readonly searchController: SearchController;
-	readonly trackingController: TrackingController;
-	readonly healthController: HealthController;
-	readonly exampleController: ExampleController;
-	readonly analyticsDispatcher: AnalyticsDispatcher;
-	readonly shutdown: () => Promise<void>;
-}
-
-export function initializeContainer(): ApplicationContainer {
+/**
+ * Handles registering all Containers, Services, and Providers.
+ */
+export function registerAppContainer(): IApplicationContainer {
 	logger.info("Initializing Application Dependency Container...");
 
-	// 1. Storage & Cache (Redis)
+	// Storage & Cache (Redis)
 	const redis = RedisClientFactory.getClient();
 	const personalizationService = new PersonalizationService(redis);
 
-	// 2. Analytics Sinks & Dispatcher (Postgres & Example)
+	// #region Analytics Sinks & Dispatcher
 	const analyticsDispatcher = new AnalyticsDispatcher();
 	analyticsDispatcher.registerSink(new ExampleAnalyticsSink());
 	analyticsDispatcher.registerSink(new PostgresAnalyticsSink());
+	// #endregion Analytics Sinks & Dispatcher
 
-	// 3. Search Providers & Registry (Mock & Example)
+	//#region Search Providers & Registry
 	const providerRegistry = new SearchProviderRegistry();
 
 	const mockProvider = new MockSearchProvider();
@@ -51,12 +47,13 @@ export function initializeContainer(): ApplicationContainer {
 
 	// Set default provider from configuration
 	providerRegistry.setDefaultProvider(env.DEFAULT_PROVIDER as SearchProviderId);
+	//#endregion Search Providers & Registry
 
-	// 4. Experiments Engine
+	// Experiments Engine
 	const experimentEvaluator = new ExperimentEvaluator();
 	experimentEvaluator.register(ExampleExperiment);
 
-	// 5. Application Services
+	// #region Application Services
 	const searchService = new SearchService(
 		providerRegistry,
 		experimentEvaluator,
@@ -66,23 +63,28 @@ export function initializeContainer(): ApplicationContainer {
 
 	const trackingService = new TrackingService(analyticsDispatcher, personalizationService);
 	const exampleService = new ExampleService();
+	// #end Application Services
 
-	// 6. Controllers
-	const searchController = new SearchController(searchService);
-	const trackingController = new TrackingController(trackingService);
-	const healthController = new HealthController(providerRegistry);
-	const exampleController = new ExampleController(exampleService);
+	const AppContainer: IApplicationContainer = {
+		// #region Register Controllers
+		Controllers: [
+			new HealthController(providerRegistry),
+			new TrackingController(trackingService),
+			new SearchController(searchService),
+			//
+			// Add new Controllers below
+			//
+			new ExampleController(exampleService),
+		],
+		AnalyticsDispatcher: analyticsDispatcher,
+		// #endregion Register Controllers
 
-	return {
-		searchController,
-		trackingController,
-		healthController,
-		exampleController,
-		analyticsDispatcher,
 		shutdown: async () => {
 			logger.info("Shutting down application container...");
 			await analyticsDispatcher.shutdown();
 			await RedisClientFactory.close();
 		},
 	};
+
+	return AppContainer;
 }

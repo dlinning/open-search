@@ -1,16 +1,16 @@
-import { ApiResponseEnvelope } from "@controllers/base.controller";
+import { ApiResponseEnvelope } from "@core/controllers/base.controller";
 import { SearchResponseDto } from "@domain-types/search-response.types";
-import { initializeContainer } from "@root/bootstrap";
+import { registerAppContainer } from "@root/bootstrap";
 import { createServer } from "@root/server";
 import { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 describe("API Smoke Integration Tests", () => {
 	let server: FastifyInstance;
-	let container: ReturnType<typeof initializeContainer>;
+	let container: ReturnType<typeof registerAppContainer>;
 
 	beforeAll(async () => {
-		container = initializeContainer();
+		container = registerAppContainer();
 		server = createServer(container);
 		await server.ready();
 	});

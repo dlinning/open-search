@@ -1,14 +1,14 @@
+import { registerControllers } from "@core/controllers/registration";
+import { correlationIdMiddleware } from "@core/middlewares/correlation-id.middleware";
+import { errorHandlerMiddleware } from "@core/middlewares/error-handler.middleware";
+import { userContextMiddleware } from "@core/middlewares/user-context.middleware";
+import { IApplicationContainer } from "@core/types/app-container";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import sensible from "@fastify/sensible";
 import Fastify, { FastifyInstance } from "fastify";
-import { registerControllers } from "@controllers/base.controller";
-import { correlationIdMiddleware } from "@middlewares/correlation-id.middleware";
-import { errorHandlerMiddleware } from "@middlewares/error-handler.middleware";
-import { userContextMiddleware } from "@middlewares/user-context.middleware";
-import { ApplicationContainer } from "./bootstrap";
 
-export function createServer(container: ApplicationContainer): FastifyInstance {
+export function createServer(container: IApplicationContainer): FastifyInstance {
 	const fastify = Fastify({
 		logger: false, // Custom Pino logger used
 	});
@@ -26,12 +26,7 @@ export function createServer(container: ApplicationContainer): FastifyInstance {
 	fastify.setErrorHandler(errorHandlerMiddleware);
 
 	// Register all Controller route dictionaries directly
-	registerControllers(fastify, [
-		{ controller: container.healthController },
-		{ controller: container.searchController, prefix: "/v1" },
-		{ controller: container.trackingController, prefix: "/v1" },
-		{ controller: container.exampleController, prefix: "/v1" },
-	]);
+	registerControllers(fastify, container);
 
 	return fastify;
 }

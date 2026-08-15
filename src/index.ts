@@ -1,10 +1,10 @@
 import { env } from "@config/env";
 import { logger } from "@observability/logger";
-import { initializeContainer } from "./bootstrap";
+import { registerAppContainer } from "./bootstrap";
 import { createServer } from "./server";
 
 async function main(): Promise<void> {
-	const container = initializeContainer();
+	const container = registerAppContainer();
 	const server = createServer(container);
 
 	//#region Graceful Shutdown

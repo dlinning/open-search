@@ -1,49 +1,60 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
+//#region IController
+export interface IController {
+	readonly params: IControllerConstructorParams | undefined;
+
+	readonly routes: ControllerRoutes;
+}
+
+export interface IControllerConstructorParams {
+	/**
+	 * Prefix to routes
+	 *
+	 * @example "/foo" -> `/foo/{routes[0].routeUrl}`
+	 */
+	urlPrefix: `/${string}`;
+}
 
 /**
- * Supported HTTP methods for route registration (accepts both uppercase and lowercase).
+ * Dictionary of controller routes mapped by action name.
  */
-export type HttpMethod =
-	| "get"
-	| "post"
-	| "put"
-	| "patch"
-	| "delete"
-	| "head"
-	| "options"
-	| "GET"
-	| "POST"
-	| "PUT"
-	| "PATCH"
-	| "DELETE"
-	| "HEAD"
-	| "OPTIONS";
+export type ControllerRoutes = ReadonlyArray<RouteDefinition>;
+
+/**
+ * Supported HTTP methods for route registration.
+ */
+export type FastifyHttpMethod = Extract<
+	keyof FastifyInstance,
+	"get" | "post" | "put" | "patch" | "delete" | "head" | "options"
+>;
 
 /**
  * Standard asynchronous route handler function signature for Fastify.
  * Applying `: RouteHandler` to controller methods provides full inference
  * for `(req, reply)` parameters without manual typing.
  */
-export type RouteHandler<
+export type FastifyRouteHandler<
 	TRequest extends FastifyRequest = FastifyRequest,
 	TReply extends FastifyReply = FastifyReply,
 > = (req: TRequest, reply: TReply) => Promise<void>;
 
 /**
- * Alias for RouteHandler.
- */
-export type FastifyRouteHandler = RouteHandler;
-
-/**
  * Strongly-typed descriptor for a single controller endpoint route.
  */
 export interface RouteDefinition {
-	readonly method: HttpMethod;
+	readonly method: FastifyHttpMethod;
 	readonly path: string;
-	readonly handler: RouteHandler;
+	readonly handler: FastifyRouteHandler;
 }
+//#endregion IController
 
 /**
- * Strongly-typed dictionary of controller routes mapped by action name.
+ * Standardized API Response model for all Endpoints.
  */
-export type ControllerRoutes = Readonly<Record<string, RouteDefinition>>;
+export interface IApiResponseEnvelope<T = unknown> {
+	readonly success: boolean;
+	readonly data?: T;
+	readonly message?: string;
+	readonly metadata?: Readonly<Record<string, unknown>>;
+}
