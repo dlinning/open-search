@@ -3,7 +3,7 @@
  * EXAMPLE TEMPLATE: example.provider.ts
  * ============================================================================
  * Use this file as a reference template when integrating a new third-party
- * search engine (e.g. Algolia, Commercetools, GCP Vertex Search, OpenSearch).
+ * search engine backend.
  *
  * Rules:
  * 1. Subclass `BaseSearchProvider<TRawReq, TRawRes>`.

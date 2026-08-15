@@ -18,7 +18,7 @@ The Gemini proposal provides a solid conceptual foundation, particularly with it
 | **Search-to-Conversion Correlation** | Independent tracking endpoint without correlated session trace.        | Impossible to accurately attribute downstream clicks, cart additions, and purchases back to specific search queries and rank positions. | Cryptographically unique, deterministic `searchId` generated per query, passed downstream, and attached to all click/conversion events.               |
 | **Personalization Feedback Loop**    | Separate Redis read; no clear real-time write pipeline from analytics. | Redis session profiles remain static during a session unless wired to clickstream.                                                      | Real-time session affinity engine that immediately updates user category/brand affinity scores upon `/v1/track` events, boosting subsequent searches. |
 | **A/B Experiment Collisions**        | Unscoped sequential mutation of `SearchRequestDto`.                    | Multiple concurrent experiments (e.g. Provider test + Ranking boost + Faceting test) can conflict and corrupt query parameters.         | Scoped, orthogonal Experiment Domains (`PROVIDER`, `QUERY_REWRITE`, `RANKING_BOOST`, `FACET_CONFIG`) with conflict resolution.                        |
-| **Provider Capability Matrix**       | Assumes all providers support identical features.                      | Different backends (Algolia vs Commercetools vs GCP Discovery Engine vs OpenSearch) have vastly different capability sets.              | Formal `ProviderCapability` flags so the core engine adapts features (e.g., semantic search, vector boosting) dynamically based on backend support.   |
+| **Provider Capability Matrix**       | Assumes all providers support identical features.                      | Different search backends have vastly different capability sets.                                                                        | Formal `ProviderCapability` flags so the core engine adapts features (e.g., semantic search, vector boosting) dynamically based on backend support.   |
 
 ---
 
@@ -88,21 +88,18 @@ The Search API is designed as a **low-latency, resilient orchestration layer** b
 // src/core/types/provider.types.ts
 
 export enum SearchProviderId {
-  ALGOLIA = 'algolia',
-  COMMERCETOOLS = 'commercetools',
-  GCP_VERTEX_SEARCH = 'gcp_vertex_search',
-  OPENSEARCH = 'opensearch',
-  MOCK = 'mock',
+	MOCK = "mock",
+	EXAMPLE = "example",
 }
 
 export enum ProviderCapability {
-  DISJUNCTIVE_FACETING = 'DISJUNCTIVE_FACETING',
-  VECTOR_HYBRID_SEARCH = 'VECTOR_HYBRID_SEARCH',
-  HIERARCHICAL_FACETS = 'HIERARCHICAL_FACETS',
-  QUERY_SUGGESTIONS = 'QUERY_SUGGESTIONS',
-  DYNAMIC_BOOSTING = 'DYNAMIC_BOOSTING',
-  SYNONYM_EXPANSION = 'SYNONYM_EXPANSION',
-  GEO_FILTERING = 'GEO_FILTERING',
+	DISJUNCTIVE_FACETING = "DISJUNCTIVE_FACETING",
+	VECTOR_HYBRID_SEARCH = "VECTOR_HYBRID_SEARCH",
+	HIERARCHICAL_FACETS = "HIERARCHICAL_FACETS",
+	QUERY_SUGGESTIONS = "QUERY_SUGGESTIONS",
+	DYNAMIC_BOOSTING = "DYNAMIC_BOOSTING",
+	SYNONYM_EXPANSION = "SYNONYM_EXPANSION",
+	GEO_FILTERING = "GEO_FILTERING",
 }
 ```
 
@@ -112,62 +109,62 @@ export enum ProviderCapability {
 // src/core/types/search-request.types.ts
 
 export type FilterOperator =
-  'EQ' | 'NEQ' | 'IN' | 'NIN' | 'GT' | 'GTE' | 'LT' | 'LTE' | 'BETWEEN' | 'CONTAINS' | 'PREFIX';
+	"EQ" | "NEQ" | "IN" | "NIN" | "GT" | "GTE" | "LT" | "LTE" | "BETWEEN" | "CONTAINS" | "PREFIX";
 
 export interface LeafFilter {
-  type: 'leaf';
-  field: string;
-  operator: FilterOperator;
-  value: string | number | boolean | (string | number)[];
+	type: "leaf";
+	field: string;
+	operator: FilterOperator;
+	value: string | number | boolean | (string | number)[];
 }
 
 export interface CompositeFilter {
-  type: 'composite';
-  logic: 'AND' | 'OR' | 'NOT';
-  filters: SearchFilterNode[];
+	type: "composite";
+	logic: "AND" | "OR" | "NOT";
+	filters: SearchFilterNode[];
 }
 
 export type SearchFilterNode = LeafFilter | CompositeFilter;
 
 export interface SortClause {
-  field: string;
-  direction: 'asc' | 'desc';
+	field: string;
+	direction: "asc" | "desc";
 }
 
 export interface PaginationParams {
-  page: number; // 1-indexed
-  pageSize: number; // 1 to 100
-  cursor?: string; // For deep-pagination / cursor-based backends
+	page: number; // 1-indexed
+	pageSize: number; // 1 to 100
+	cursor?: string; // For deep-pagination / cursor-based backends
 }
 
 export interface UserContext {
-  userId?: string;
-  sessionId: string;
-  locale: string; // e.g. "en-US", "de-DE"
-  currency: string; // e.g. "USD", "EUR"
-  ipAddress?: string;
-  userAgent?: string;
-  geo?: {
-    country?: string;
-    region?: string;
-    city?: string;
-    latitude?: number;
-    longitude?: number;
-  };
-  segments?: string[]; // e.g. ["vip", "b2b", "newsletter_subscriber"]
-  customAttributes?: Record<string, unknown>;
+	userId?: string;
+	sessionId: string;
+	locale: string; // e.g. "en-US", "de-DE"
+	currency: string; // e.g. "USD", "EUR"
+	ipAddress?: string;
+	userAgent?: string;
+	geo?: {
+		country?: string;
+		region?: string;
+		city?: string;
+		latitude?: number;
+		longitude?: number;
+	};
+	segments?: string[]; // e.g. ["vip", "b2b", "newsletter_subscriber"]
+	customAttributes?: Record<string, unknown>;
 }
 
 export interface SearchRequestDto {
-  query: string;
-  providerId?: SearchProviderId; // Optional; auto-selected by router/experiment if omitted
-  pagination: PaginationParams;
-  filters?: SearchFilterNode;
-  facetsRequested?: string[]; // Fields to return aggregation counts for
-  sort?: SortClause[];
-  userContext: UserContext;
-  enablePersonalization?: boolean; // Default true
-  debug?: boolean; // Returns execution traces if authorized
+	query: string;
+	providerId?: SearchProviderId; // Optional; auto-selected by router/experiment if omitted
+	pagination: PaginationParams;
+	filters?: SearchFilterNode;
+	facetsRequested?: string[]; // Fields to return aggregation counts for
+	sort?: SortClause[];
+	userContext: UserContext;
+	enablePersonalization?: boolean; // Default true
+	debug?: boolean; // Returns execution traces if authorized
 }
 ```
 
@@ -177,76 +174,76 @@ export interface SearchRequestDto {
 // src/core/types/search-response.types.ts
 
 export interface PriceDto {
-  currency: string;
-  regularPrice: number;
-  salePrice?: number;
-  discountPercentage?: number;
+	currency: string;
+	regularPrice: number;
+	salePrice?: number;
+	discountPercentage?: number;
 }
 
 export interface ProductHit {
-  id: string;
-  sku: string;
-  title: string;
-  description: string;
-  brand?: string;
-  categories: string[];
-  hierarchicalCategories?: Record<string, string[]>; // e.g. { lvl0: ['Apparel'], lvl1: ['Apparel > Shoes'] }
-  price: PriceDto;
-  thumbnailUrl?: string;
-  images?: string[];
-  inStock: boolean;
-  inventoryCount?: number;
-  rating?: {
-    average: number;
-    count: number;
-  };
-  attributes: Record<string, unknown>;
-  relevanceScore?: number;
-  highlightedFields?: Record<string, string>; // Snippets with <em> matching
+	id: string;
+	sku: string;
+	title: string;
+	description: string;
+	brand?: string;
+	categories: string[];
+	hierarchicalCategories?: Record<string, string[]>; // e.g. { lvl0: ['Apparel'], lvl1: ['Apparel > Shoes'] }
+	price: PriceDto;
+	thumbnailUrl?: string;
+	images?: string[];
+	inStock: boolean;
+	inventoryCount?: number;
+	rating?: {
+		average: number;
+		count: number;
+	};
+	attributes: Record<string, unknown>;
+	relevanceScore?: number;
+	highlightedFields?: Record<string, string>; // Snippets with <em> matching
 }
 
 export interface FacetBucket {
-  value: string;
-  count: number;
-  selected?: boolean;
+	value: string;
+	count: number;
+	selected?: boolean;
 }
 
 export interface FacetResult {
-  field: string;
-  displayName: string;
-  type: 'terms' | 'range' | 'hierarchical';
-  buckets: FacetBucket[];
+	field: string;
+	displayName: string;
+	type: "terms" | "range" | "hierarchical";
+	buckets: FacetBucket[];
 }
 
 export interface SearchTelemetry {
-  executionTimeMs: number;
-  providerExecutionTimeMs: number;
-  sessionAffinityLookupMs: number;
-  provider: SearchProviderId;
-  fallbackTriggered: boolean;
-  cachedResponse: boolean;
+	executionTimeMs: number;
+	providerExecutionTimeMs: number;
+	sessionAffinityLookupMs: number;
+	provider: SearchProviderId;
+	fallbackTriggered: boolean;
+	cachedResponse: boolean;
 }
 
 export interface SearchResponseDto {
-  searchId: string; // Trace token for downstream analytics
-  query: string;
-  pagination: {
-    page: number;
-    pageSize: number;
-    totalHits: number;
-    totalPages: number;
-    nextCursor?: string;
-  };
-  items: ProductHit[];
-  facets: FacetResult[];
-  appliedFilters?: SearchFilterNode;
-  activeExperiments: Array<{
-    experimentId: string;
-    variantId: string;
-    scope: string;
-  }>;
-  suggestions?: string[]; // "Did you mean?" or alternative queries
-  telemetry: SearchTelemetry;
+	searchId: string; // Trace token for downstream analytics
+	query: string;
+	pagination: {
+		page: number;
+		pageSize: number;
+		totalHits: number;
+		totalPages: number;
+		nextCursor?: string;
+	};
+	items: ProductHit[];
+	facets: FacetResult[];
+	appliedFilters?: SearchFilterNode;
+	activeExperiments: Array<{
+		experimentId: string;
+		variantId: string;
+		scope: string;
+	}>;
+	suggestions?: string[]; // "Did you mean?" or alternative queries
+	telemetry: SearchTelemetry;
 }
 ```
 
@@ -262,32 +259,32 @@ The architecture enforces strict decoupling between unified internal DTOs and ve
 // src/core/interfaces/search-provider.interface.ts
 
 export interface ISearchProvider<TRawReq = unknown, TRawRes = unknown> {
-  readonly providerId: SearchProviderId;
-  readonly capabilities: ReadonlySet<ProviderCapability>;
+	readonly providerId: SearchProviderId;
+	readonly capabilities: ReadonlySet<ProviderCapability>;
 
-  /** Transforms normalized internal request into vendor-specific payload */
-  mapToVendorRequest(request: SearchRequestDto, boostParams?: QueryBoostParameters): TRawReq;
+	/** Transforms normalized internal request into vendor-specific payload */
+	mapToVendorRequest(request: SearchRequestDto, boostParams?: QueryBoostParameters): TRawReq;
 
-  /** Executes search query against external engine with AbortSignal timeout */
-  executeVendorSearch(rawReq: TRawReq, signal: AbortSignal): Promise<TRawRes>;
+	/** Executes search query against external engine with AbortSignal timeout */
+	executeVendorSearch(rawReq: TRawReq, signal: AbortSignal): Promise<TRawRes>;
 
-  /** Normalizes vendor response into unified SearchResponseDto */
-  mapToInternalResponse(
-    rawRes: TRawRes,
-    originalReq: SearchRequestDto,
-    searchId: string,
-    durationMs: number,
-  ): SearchResponseDto;
+	/** Normalizes vendor response into unified SearchResponseDto */
+	mapToInternalResponse(
+		rawRes: TRawRes,
+		originalReq: SearchRequestDto,
+		searchId: string,
+		durationMs: number
+	): SearchResponseDto;
 
-  /** Full pipeline execution with built-in telemetry and circuit breaker protection */
-  search(
-    request: SearchRequestDto,
-    searchId: string,
-    boostParams?: QueryBoostParameters,
-  ): Promise<SearchResponseDto>;
+	/** Full pipeline execution with built-in telemetry and circuit breaker protection */
+	search(
+		request: SearchRequestDto,
+		searchId: string,
+		boostParams?: QueryBoostParameters
+	): Promise<SearchResponseDto>;
 
-  /** Health-check hook for readiness probes */
-  healthCheck(): Promise<boolean>;
+	/** Health-check hook for readiness probes */
+	healthCheck(): Promise<boolean>;
 }
 ```
 
@@ -296,87 +293,87 @@ export interface ISearchProvider<TRawReq = unknown, TRawRes = unknown> {
 ```typescript
 // src/infrastructure/providers/base.provider.ts
 
-import CircuitBreaker from 'opossum';
-import { ISearchProvider } from '../../core/interfaces/search-provider.interface';
-import { SearchProviderId, ProviderCapability } from '../../core/types/provider.types';
-import { SearchRequestDto, QueryBoostParameters } from '../../core/types/search-request.types';
-import { SearchResponseDto } from '../../core/types/search-response.types';
-import { AppError } from '../../core/errors/app-error';
+import CircuitBreaker from "opossum";
+import { ISearchProvider } from "../../core/interfaces/search-provider.interface";
+import { SearchProviderId, ProviderCapability } from "../../core/types/provider.types";
+import { SearchRequestDto, QueryBoostParameters } from "../../core/types/search-request.types";
+import { SearchResponseDto } from "../../core/types/search-response.types";
+import { AppError } from "../../core/errors/app-error";
 
 export abstract class BaseSearchProvider<TRawReq, TRawRes> implements ISearchProvider<
-  TRawReq,
-  TRawRes
+	TRawReq,
+	TRawRes
 > {
-  public abstract readonly providerId: SearchProviderId;
-  public abstract readonly capabilities: ReadonlySet<ProviderCapability>;
+	public abstract readonly providerId: SearchProviderId;
+	public abstract readonly capabilities: ReadonlySet<ProviderCapability>;
 
-  protected breaker: CircuitBreaker<[TRawReq, AbortSignal], TRawRes>;
-  protected timeoutMs: number;
+	protected breaker: CircuitBreaker<[TRawReq, AbortSignal], TRawRes>;
+	protected timeoutMs: number;
 
-  constructor(timeoutMs = 2500, breakerOptions?: CircuitBreaker.Options) {
-    this.timeoutMs = timeoutMs;
-    this.breaker = new CircuitBreaker(
-      (req: TRawReq, signal: AbortSignal) => this.executeVendorSearch(req, signal),
-      {
-        timeout: this.timeoutMs,
-        errorThresholdPercentage: 50,
-        resetTimeout: 10000,
-        ...breakerOptions,
-      },
-    );
+	constructor(timeoutMs = 2500, breakerOptions?: CircuitBreaker.Options) {
+		this.timeoutMs = timeoutMs;
+		this.breaker = new CircuitBreaker(
+			(req: TRawReq, signal: AbortSignal) => this.executeVendorSearch(req, signal),
+			{
+				timeout: this.timeoutMs,
+				errorThresholdPercentage: 50,
+				resetTimeout: 10000,
+				...breakerOptions,
+			}
+		);
 
-    this.breaker.on('open', () => {
-      console.warn(`[CircuitBreaker] Provider ${this.providerId} OPENED - failing fast`);
-    });
-  }
+		this.breaker.on("open", () => {
+			console.warn(`[CircuitBreaker] Provider ${this.providerId} OPENED - failing fast`);
+		});
+	}
 
-  public abstract mapToVendorRequest(
-    request: SearchRequestDto,
-    boostParams?: QueryBoostParameters,
-  ): TRawReq;
-  public abstract executeVendorSearch(rawReq: TRawReq, signal: AbortSignal): Promise<TRawRes>;
-  public abstract mapToInternalResponse(
-    rawRes: TRawRes,
-    originalReq: SearchRequestDto,
-    searchId: string,
-    durationMs: number,
-  ): SearchResponseDto;
+	public abstract mapToVendorRequest(
+		request: SearchRequestDto,
+		boostParams?: QueryBoostParameters
+	): TRawReq;
+	public abstract executeVendorSearch(rawReq: TRawReq, signal: AbortSignal): Promise<TRawRes>;
+	public abstract mapToInternalResponse(
+		rawRes: TRawRes,
+		originalReq: SearchRequestDto,
+		searchId: string,
+		durationMs: number
+	): SearchResponseDto;
 
-  public async search(
-    request: SearchRequestDto,
-    searchId: string,
-    boostParams?: QueryBoostParameters,
-  ): Promise<SearchResponseDto> {
-    const startTime = performance.now();
-    const vendorPayload = this.mapToVendorRequest(request, boostParams);
+	public async search(
+		request: SearchRequestDto,
+		searchId: string,
+		boostParams?: QueryBoostParameters
+	): Promise<SearchResponseDto> {
+		const startTime = performance.now();
+		const vendorPayload = this.mapToVendorRequest(request, boostParams);
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
-    try {
-      const rawResponse = await this.breaker.fire(vendorPayload, controller.signal);
-      const executionTimeMs = Math.round(performance.now() - startTime);
-      return this.mapToInternalResponse(rawResponse, request, searchId, executionTimeMs);
-    } catch (err: any) {
-      const executionTimeMs = Math.round(performance.now() - startTime);
-      throw new AppError(
-        `Provider ${this.providerId} execution failed: ${err.message}`,
-        502,
-        'PROVIDER_ERROR',
-        {
-          providerId: this.providerId,
-          executionTimeMs,
-          originalError: err,
-        },
-      );
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+		try {
+			const rawResponse = await this.breaker.fire(vendorPayload, controller.signal);
+			const executionTimeMs = Math.round(performance.now() - startTime);
+			return this.mapToInternalResponse(rawResponse, request, searchId, executionTimeMs);
+		} catch (err: any) {
+			const executionTimeMs = Math.round(performance.now() - startTime);
+			throw new AppError(
+				`Provider ${this.providerId} execution failed: ${err.message}`,
+				502,
+				"PROVIDER_ERROR",
+				{
+					providerId: this.providerId,
+					executionTimeMs,
+					originalError: err,
+				}
+			);
+		} finally {
+			clearTimeout(timer);
+		}
+	}
 
-  public async healthCheck(): Promise<boolean> {
-    return !this.breaker.opened;
-  }
+	public async healthCheck(): Promise<boolean> {
+		return !this.breaker.opened;
+	}
 }
 ```
 
@@ -385,53 +382,53 @@ export abstract class BaseSearchProvider<TRawReq, TRawRes> implements ISearchPro
 ```typescript
 // src/infrastructure/providers/provider.registry.ts
 
-import { ISearchProvider } from '../../core/interfaces/search-provider.interface';
-import { SearchProviderId } from '../../core/types/provider.types';
+import { ISearchProvider } from "../../core/interfaces/search-provider.interface";
+import { SearchProviderId } from "../../core/types/provider.types";
 
 export class SearchProviderRegistry {
-  private readonly providers = new Map<SearchProviderId, ISearchProvider>();
-  private defaultProviderId: SearchProviderId = SearchProviderId.MOCK;
+	private readonly providers = new Map<SearchProviderId, ISearchProvider>();
+	private defaultProviderId: SearchProviderId = SearchProviderId.MOCK;
 
-  public register(provider: ISearchProvider): this {
-    this.providers.set(provider.providerId, provider);
-    return this;
-  }
+	public register(provider: ISearchProvider): this {
+		this.providers.set(provider.providerId, provider);
+		return this;
+	}
 
-  public setDefaultProvider(providerId: SearchProviderId): void {
-    if (!this.providers.has(providerId)) {
-      throw new Error(`Cannot set default provider to unregistered ID: ${providerId}`);
-    }
-    this.defaultProviderId = providerId;
-  }
+	public setDefaultProvider(providerId: SearchProviderId): void {
+		if (!this.providers.has(providerId)) {
+			throw new Error(`Cannot set default provider to unregistered ID: ${providerId}`);
+		}
+		this.defaultProviderId = providerId;
+	}
 
-  public get(providerId?: SearchProviderId): ISearchProvider {
-    const targetId = providerId || this.defaultProviderId;
-    const provider = this.providers.get(targetId);
-    if (!provider) {
-      throw new Error(
-        `Search provider not configured: ${targetId}. Available: ${[...this.providers.keys()].join(', ')}`,
-      );
-    }
-    return provider;
-  }
+	public get(providerId?: SearchProviderId): ISearchProvider {
+		const targetId = providerId || this.defaultProviderId;
+		const provider = this.providers.get(targetId);
+		if (!provider) {
+			throw new Error(
+				`Search provider not configured: ${targetId}. Available: ${[...this.providers.keys()].join(", ")}`
+			);
+		}
+		return provider;
+	}
 
-  public getFallback(failedProviderId: SearchProviderId): ISearchProvider | null {
-    for (const [id, provider] of this.providers.entries()) {
-      if (id !== failedProviderId && !this.isCircuitOpen(id)) {
-        return provider;
-      }
-    }
-    return null;
-  }
+	public getFallback(failedProviderId: SearchProviderId): ISearchProvider | null {
+		for (const [id, provider] of this.providers.entries()) {
+			if (id !== failedProviderId && !this.isCircuitOpen(id)) {
+				return provider;
+			}
+		}
+		return null;
+	}
 
-  private isCircuitOpen(id: SearchProviderId): boolean {
-    const provider = this.providers.get(id);
-    return provider ? !(provider as any).breaker?.opened : true;
-  }
+	private isCircuitOpen(id: SearchProviderId): boolean {
+		const provider = this.providers.get(id);
+		return provider ? !(provider as any).breaker?.opened : true;
+	}
 
-  public listAvailable(): SearchProviderId[] {
-    return Array.from(this.providers.keys());
-  }
+	public listAvailable(): SearchProviderId[] {
+		return Array.from(this.providers.keys());
+	}
 }
 ```
 
@@ -442,8 +439,8 @@ To add any new search backend (e.g. `Elasticsearch` / `OpenSearch`, `Constructor
 1. **Add Enum**: Add identifier in `src/core/types/provider.types.ts`.
 2. **Define Vendor Types**: Create `src/infrastructure/providers/{provider}/{provider}.types.ts` containing the vendor's SDK request & response types.
 3. **Implement Bidirectional Mapper**: Create `{provider}.mapper.ts` implementing:
-   - `toVendorQuery(req: SearchRequestDto, boosts?: QueryBoostParameters)`
-   - `toInternalResponse(res: VendorResponse, originalReq, searchId, durationMs): SearchResponseDto`
+    - `toVendorQuery(req: SearchRequestDto, boosts?: QueryBoostParameters)`
+    - `toInternalResponse(res: VendorResponse, originalReq, searchId, durationMs): SearchResponseDto`
 4. **Implement Provider Class**: Subclass `BaseSearchProvider` and declare `capabilities`.
 5. **Register in Container**: Instantiate in `src/bootstrap.ts` and call `registry.register(newProvider)`.
 
@@ -465,7 +462,7 @@ To prevent mutation collisions when multiple experiments are running concurrentl
                        │          EXPERIMENT SCOPES (Evaluated in Sequence)      │
                        │                                                         │
                        │ 1. SCOPE: PROVIDER                                      │
-                       │    └─ Selects Backend (e.g. Algolia vs OpenSearch)      │
+                       │    └─ Selects Backend (e.g. Mock vs Example Provider)   │
                        │                                                         │
                        │ 2. SCOPE: QUERY_REWRITE                                 │
                        │    └─ Synonym expansion, typo tolerance tolerance rules │
@@ -488,94 +485,94 @@ To prevent mutation collisions when multiple experiments are running concurrentl
 ```typescript
 // src/infrastructure/experiments/experiment-evaluator.ts
 
-import murmur from 'murmurhash';
-import { SearchRequestDto } from '../../core/types/search-request.types';
+import murmur from "murmurhash";
+import { SearchRequestDto } from "../../core/types/search-request.types";
 
-export type ExperimentScope = 'PROVIDER' | 'QUERY_REWRITE' | 'RANKING_BOOST' | 'FACET_LAYOUT';
+export type ExperimentScope = "PROVIDER" | "QUERY_REWRITE" | "RANKING_BOOST" | "FACET_LAYOUT";
 
 export interface VariantAllocation {
-  variantId: string;
-  weight: number; // 0 to 100 percentage integer
-  config?: Record<string, unknown>;
+	variantId: string;
+	weight: number; // 0 to 100 percentage integer
+	config?: Record<string, unknown>;
 }
 
 export interface ExperimentDefinition {
-  id: string;
-  scope: ExperimentScope;
-  enabled: boolean;
-  trafficPercentage: number; // 0 - 100
-  variants: VariantAllocation[];
-  targetingRule?: (req: SearchRequestDto) => boolean;
-  mutate: (req: SearchRequestDto, variantId: string, config?: Record<string, unknown>) => void;
+	id: string;
+	scope: ExperimentScope;
+	enabled: boolean;
+	trafficPercentage: number; // 0 - 100
+	variants: VariantAllocation[];
+	targetingRule?: (req: SearchRequestDto) => boolean;
+	mutate: (req: SearchRequestDto, variantId: string, config?: Record<string, unknown>) => void;
 }
 
 export interface ExperimentAssignment {
-  experimentId: string;
-  variantId: string;
-  scope: ExperimentScope;
+	experimentId: string;
+	variantId: string;
+	scope: ExperimentScope;
 }
 
 export class ExperimentEvaluator {
-  private readonly experiments = new Map<string, ExperimentDefinition>();
+	private readonly experiments = new Map<string, ExperimentDefinition>();
 
-  public register(experiment: ExperimentDefinition): void {
-    const totalWeight = experiment.variants.reduce((acc, v) => acc + v.weight, 0);
-    if (totalWeight !== 100) {
-      throw new Error(
-        `Experiment ${experiment.id} variant weights must sum to 100 (got ${totalWeight})`,
-      );
-    }
-    this.experiments.set(experiment.id, experiment);
-  }
+	public register(experiment: ExperimentDefinition): void {
+		const totalWeight = experiment.variants.reduce((acc, v) => acc + v.weight, 0);
+		if (totalWeight !== 100) {
+			throw new Error(
+				`Experiment ${experiment.id} variant weights must sum to 100 (got ${totalWeight})`
+			);
+		}
+		this.experiments.set(experiment.id, experiment);
+	}
 
-  public evaluate(request: SearchRequestDto): ExperimentAssignment[] {
-    const assignments: ExperimentAssignment[] = [];
-    const entityKey = request.userContext.userId || request.userContext.sessionId;
+	public evaluate(request: SearchRequestDto): ExperimentAssignment[] {
+		const assignments: ExperimentAssignment[] = [];
+		const entityKey = request.userContext.userId || request.userContext.sessionId;
 
-    // Evaluate by scope hierarchy to guarantee clean deterministic mutations
-    const activeExperiments = Array.from(this.experiments.values()).filter((e) => e.enabled);
+		// Evaluate by scope hierarchy to guarantee clean deterministic mutations
+		const activeExperiments = Array.from(this.experiments.values()).filter((e) => e.enabled);
 
-    for (const exp of activeExperiments) {
-      if (exp.targetingRule && !exp.targetingRule(request)) {
-        continue;
-      }
+		for (const exp of activeExperiments) {
+			if (exp.targetingRule && !exp.targetingRule(request)) {
+				continue;
+			}
 
-      // Check if user falls within experiment traffic allocation
-      const trafficBucket = this.hashToBucket(`${entityKey}:${exp.id}:traffic`, 100);
-      if (trafficBucket >= exp.trafficPercentage) {
-        continue;
-      }
+			// Check if user falls within experiment traffic allocation
+			const trafficBucket = this.hashToBucket(`${entityKey}:${exp.id}:traffic`, 100);
+			if (trafficBucket >= exp.trafficPercentage) {
+				continue;
+			}
 
-      // Determine assigned variant
-      const variantBucket = this.hashToBucket(`${entityKey}:${exp.id}:variant`, 100);
-      let cumulative = 0;
-      let selectedVariant = exp.variants[0];
+			// Determine assigned variant
+			const variantBucket = this.hashToBucket(`${entityKey}:${exp.id}:variant`, 100);
+			let cumulative = 0;
+			let selectedVariant = exp.variants[0];
 
-      for (const variant of exp.variants) {
-        cumulative += variant.weight;
-        if (variantBucket < cumulative) {
-          selectedVariant = variant;
-          break;
-        }
-      }
+			for (const variant of exp.variants) {
+				cumulative += variant.weight;
+				if (variantBucket < cumulative) {
+					selectedVariant = variant;
+					break;
+				}
+			}
 
-      // Apply mutation safely
-      exp.mutate(request, selectedVariant.variantId, selectedVariant.config);
+			// Apply mutation safely
+			exp.mutate(request, selectedVariant.variantId, selectedVariant.config);
 
-      assignments.push({
-        experimentId: exp.id,
-        variantId: selectedVariant.variantId,
-        scope: exp.scope,
-      });
-    }
+			assignments.push({
+				experimentId: exp.id,
+				variantId: selectedVariant.variantId,
+				scope: exp.scope,
+			});
+		}
 
-    return assignments;
-  }
+		return assignments;
+	}
 
-  private hashToBucket(key: string, modulus: number): number {
-    const hash = murmur.v3(key, 0x12345678);
-    return Math.abs(hash) % modulus;
-  }
+	private hashToBucket(key: string, modulus: number): number {
+		const hash = murmur.v3(key, 0x12345678);
+		return Math.abs(hash) % modulus;
+	}
 }
 ```
 
@@ -600,8 +597,8 @@ Unlike static personalization, our architecture forms a closed loop:
           │             │
           ├─────────────┼──► Reads Session Affinity ◄────┐
           │             │    (category: "Shoes", w: 4.5) │ (Sub-2ms Redis read)
-          ▼             │                                │
-   [ Algolia / CT / GCP ]                                │
+          ▼             │
+   [ Search Provider ]  │
                                                          │ 3. Real-Time Update
    [ Client / Browser ]                                  │    (Increment "Shoes" +3)
           │                                              │
@@ -614,79 +611,85 @@ Unlike static personalization, our architecture forms a closed loop:
 
 - Key: `session:{sessionId}:affinity` (Redis Hash)
 - Fields:
-  - `cat:{categoryName}` -> Integer Score
-  - `brand:{brandName}` -> Integer Score
-  - `price_tier` -> `budget` | `mid` | `premium`
-  - `updated_at` -> Timestamp
+    - `cat:{categoryName}` -> Integer Score
+    - `brand:{brandName}` -> Integer Score
+    - `price_tier` -> `budget` | `mid` | `premium`
+    - `updated_at` -> Timestamp
 - Expiry: 1800 seconds (sliding window TTL refreshed on every interaction).
 
 ```typescript
 // src/services/personalization.service.ts
 
-import { Redis } from 'ioredis';
-import { UserContext } from '../../core/types/search-request.types';
+import { Redis } from "ioredis";
+import { UserContext } from "../../core/types/search-request.types";
 
 export interface QueryBoostParameters {
-  categoryBoosts?: Array<{ category: string; weight: number }>;
-  brandBoosts?: Array<{ brand: string; weight: number }>;
-  priceRangeBoost?: { min?: number; max?: number };
+	categoryBoosts?: Array<{ category: string; weight: number }>;
+	brandBoosts?: Array<{ brand: string; weight: number }>;
+	priceRangeBoost?: { min?: number; max?: number };
 }
 
 export class PersonalizationService {
-  constructor(private readonly redis: Redis) {}
+	constructor(private readonly redis: Redis) {}
 
-  public async getSessionBoosts(
-    userContext: UserContext,
-  ): Promise<QueryBoostParameters | undefined> {
-    const sessionKey = `session:${userContext.sessionId}:affinity`;
+	public async getSessionBoosts(
+		userContext: UserContext
+	): Promise<QueryBoostParameters | undefined> {
+		const sessionKey = `session:${userContext.sessionId}:affinity`;
 
-    try {
-      const affinities = await this.redis.hgetall(sessionKey);
-      if (!affinities || Object.keys(affinities).length === 0) {
-        return undefined;
-      }
+		try {
+			const affinities = await this.redis.hgetall(sessionKey);
+			if (!affinities || Object.keys(affinities).length === 0) {
+				return undefined;
+			}
 
-      const categoryBoosts: Array<{ category: string; weight: number }> = [];
-      const brandBoosts: Array<{ brand: string; weight: number }> = [];
+			const categoryBoosts: Array<{ category: string; weight: number }> = [];
+			const brandBoosts: Array<{ brand: string; weight: number }> = [];
 
-      for (const [key, valueStr] of Object.entries(affinities)) {
-        const score = parseFloat(valueStr);
-        if (isNaN(score) || score <= 0) continue;
+			for (const [key, valueStr] of Object.entries(affinities)) {
+				const score = parseFloat(valueStr);
+				if (isNaN(score) || score <= 0) continue;
 
-        if (key.startsWith('cat:')) {
-          categoryBoosts.push({ category: key.replace('cat:', ''), weight: Math.min(score, 10) });
-        } else if (key.startsWith('brand:')) {
-          brandBoosts.push({ brand: key.replace('brand:', ''), weight: Math.min(score, 10) });
-        }
-      }
+				if (key.startsWith("cat:")) {
+					categoryBoosts.push({
+						category: key.replace("cat:", ""),
+						weight: Math.min(score, 10),
+					});
+				} else if (key.startsWith("brand:")) {
+					brandBoosts.push({
+						brand: key.replace("brand:", ""),
+						weight: Math.min(score, 10),
+					});
+				}
+			}
 
-      return {
-        categoryBoosts: categoryBoosts.sort((a, b) => b.weight - a.weight).slice(0, 3),
-        brandBoosts: brandBoosts.sort((a, b) => b.weight - a.weight).slice(0, 3),
-      };
-    } catch (err) {
-      // Personalization failure must never crash the search path
-      return undefined;
-    }
-  }
+			return {
+				categoryBoosts: categoryBoosts.sort((a, b) => b.weight - a.weight).slice(0, 3),
+				brandBoosts: brandBoosts.sort((a, b) => b.weight - a.weight).slice(0, 3),
+			};
+		} catch (err) {
+			// Personalization failure must never crash the search path
+			return undefined;
+		}
+	}
 
-  public async recordInteraction(
-    sessionId: string,
-    interaction: { category?: string; brand?: string; weight?: number },
-  ): Promise<void> {
-    const sessionKey = `session:${sessionId}:affinity`;
-    const weight = interaction.weight || 1;
+	public async recordInteraction(
+		sessionId: string,
+		interaction: { category?: string; brand?: string; weight?: number }
+	): Promise<void> {
+		const sessionKey = `session:${sessionId}:affinity`;
+		const weight = interaction.weight || 1;
 
-    const pipeline = this.redis.pipeline();
-    if (interaction.category) {
-      pipeline.hincrbyfloat(sessionKey, `cat:${interaction.category}`, weight);
-    }
-    if (interaction.brand) {
-      pipeline.hincrbyfloat(sessionKey, `brand:${interaction.brand}`, weight);
-    }
-    pipeline.expire(sessionKey, 1800); // Reset 30-minute sliding window
-    await pipeline.exec();
-  }
+		const pipeline = this.redis.pipeline();
+		if (interaction.category) {
+			pipeline.hincrbyfloat(sessionKey, `cat:${interaction.category}`, weight);
+		}
+		if (interaction.brand) {
+			pipeline.hincrbyfloat(sessionKey, `brand:${interaction.brand}`, weight);
+		}
+		pipeline.expire(sessionKey, 1800); // Reset 30-minute sliding window
+		await pipeline.exec();
+	}
 }
 ```
 
@@ -702,32 +705,32 @@ To accurately calculate Search Click-Through Rate (CTR), Conversion Rate (CVR), 
 // src/core/types/analytics.types.ts
 
 export enum AnalyticsEventType {
-  SEARCH_REQUEST = 'search_request',
-  SEARCH_RESULT_CLICK = 'search_result_click',
-  PRODUCT_DETAIL_VIEW = 'product_detail_view',
-  CART_ADDITION = 'cart_addition',
-  CONVERSION = 'conversion',
+	SEARCH_REQUEST = "search_request",
+	SEARCH_RESULT_CLICK = "search_result_click",
+	PRODUCT_DETAIL_VIEW = "product_detail_view",
+	CART_ADDITION = "cart_addition",
+	CONVERSION = "conversion",
 }
 
 export interface AnalyticsEventDto {
-  eventId: string;
-  eventType: AnalyticsEventType;
-  timestamp: string; // ISO 8601 UTC
-  searchId: string; // Correlates back to the original search
-  provider: SearchProviderId;
-  userContext: UserContext;
-  experiments: Array<{ experimentId: string; variantId: string }>;
-  payload: {
-    query?: string;
-    totalHits?: number;
-    returnedItemIds?: string[];
-    clickedItemId?: string;
-    rankPosition?: number; // 1-indexed hit position
-    pricePaid?: number;
-    currency?: string;
-    latencyMs?: number;
-    customMetadata?: Record<string, unknown>;
-  };
+	eventId: string;
+	eventType: AnalyticsEventType;
+	timestamp: string; // ISO 8601 UTC
+	searchId: string; // Correlates back to the original search
+	provider: SearchProviderId;
+	userContext: UserContext;
+	experiments: Array<{ experimentId: string; variantId: string }>;
+	payload: {
+		query?: string;
+		totalHits?: number;
+		returnedItemIds?: string[];
+		clickedItemId?: string;
+		rankPosition?: number; // 1-indexed hit position
+		pricePaid?: number;
+		currency?: string;
+		latencyMs?: number;
+		customMetadata?: Record<string, unknown>;
+	};
 }
 ```
 
@@ -736,59 +739,59 @@ export interface AnalyticsEventDto {
 ```typescript
 // src/infrastructure/analytics/analytics-dispatcher.ts
 
-import { AnalyticsEventDto } from '../../core/types/analytics.types';
-import { IAnalyticsSink } from '../../core/interfaces/analytics-sink.interface';
+import { AnalyticsEventDto } from "../../core/types/analytics.types";
+import { IAnalyticsSink } from "../../core/interfaces/analytics-sink.interface";
 
 export class AnalyticsDispatcher {
-  private sinks: IAnalyticsSink[] = [];
-  private memoryBuffer: AnalyticsEventDto[] = [];
-  private flushTimer: NodeJS.Timeout | null = null;
-  private readonly maxBufferSize: number;
-  private readonly flushIntervalMs: number;
+	private sinks: IAnalyticsSink[] = [];
+	private memoryBuffer: AnalyticsEventDto[] = [];
+	private flushTimer: NodeJS.Timeout | null = null;
+	private readonly maxBufferSize: number;
+	private readonly flushIntervalMs: number;
 
-  constructor(maxBufferSize = 100, flushIntervalMs = 1000) {
-    this.maxBufferSize = maxBufferSize;
-    this.flushIntervalMs = flushIntervalMs;
-    this.startPeriodicFlush();
-  }
+	constructor(maxBufferSize = 100, flushIntervalMs = 1000) {
+		this.maxBufferSize = maxBufferSize;
+		this.flushIntervalMs = flushIntervalMs;
+		this.startPeriodicFlush();
+	}
 
-  public registerSink(sink: IAnalyticsSink): this {
-    this.sinks.push(sink);
-    return this;
-  }
+	public registerSink(sink: IAnalyticsSink): this {
+		this.sinks.push(sink);
+		return this;
+	}
 
-  public dispatch(event: AnalyticsEventDto): void {
-    this.memoryBuffer.push(event);
-    if (this.memoryBuffer.length >= this.maxBufferSize) {
-      this.flush();
-    }
-  }
+	public dispatch(event: AnalyticsEventDto): void {
+		this.memoryBuffer.push(event);
+		if (this.memoryBuffer.length >= this.maxBufferSize) {
+			this.flush();
+		}
+	}
 
-  public async flush(): Promise<void> {
-    if (this.memoryBuffer.length === 0) return;
+	public async flush(): Promise<void> {
+		if (this.memoryBuffer.length === 0) return;
 
-    const batch = [...this.memoryBuffer];
-    this.memoryBuffer = [];
+		const batch = [...this.memoryBuffer];
+		this.memoryBuffer = [];
 
-    const sinkPromises = this.sinks.map(async (sink) => {
-      try {
-        if (sink.sendBatch) {
-          await sink.sendBatch(batch);
-        } else {
-          await Promise.allSettled(batch.map((e) => sink.send(e)));
-        }
-      } catch (err) {
-        console.error(`[AnalyticsSink:${sink.sinkId}] Batch flush failed:`, err);
-      }
-    });
+		const sinkPromises = this.sinks.map(async (sink) => {
+			try {
+				if (sink.sendBatch) {
+					await sink.sendBatch(batch);
+				} else {
+					await Promise.allSettled(batch.map((e) => sink.send(e)));
+				}
+			} catch (err) {
+				console.error(`[AnalyticsSink:${sink.sinkId}] Batch flush failed:`, err);
+			}
+		});
 
-    await Promise.allSettled(sinkPromises);
-  }
+		await Promise.allSettled(sinkPromises);
+	}
 
-  private startPeriodicFlush(): void {
-    this.flushTimer = setInterval(() => this.flush(), this.flushIntervalMs);
-    this.flushTimer.unref(); // Prevent timer from keeping Node process alive
-  }
+	private startPeriodicFlush(): void {
+		this.flushTimer = setInterval(() => this.flush(), this.flushIntervalMs);
+		this.flushTimer.unref(); // Prevent timer from keeping Node process alive
+	}
 }
 ```
 
@@ -857,64 +860,40 @@ open-search-api/
 │   │   ├── analytics/
 │   │   │   ├── analytics-dispatcher.ts
 │   │   │   └── sinks/
-│   │   │       ├── clickhouse.sink.ts
 │   │   │       ├── postgres.sink.ts
-│   │   │       ├── ga4.sink.ts
-│   │   │       ├── plausible.sink.ts
-│   │   │       └── app-insights.sink.ts
+│   │   │       └── example.sink.ts
 │   │   ├── cache/
 │   │   │   └── redis.client.ts
 │   │   ├── experiments/
 │   │   │   ├── experiment-evaluator.ts
 │   │   │   └── definitions/
-│   │   │       ├── provider-comparison.exp.ts
-│   │   │       └── vector-boost.exp.ts
+│   │   │       └── example.experiment.ts
 │   │   ├── observability/
-│   │   │   ├── logger.ts
-│   │   │   ├── metrics.ts
-│   │   │   └── tracer.ts
+│   │   │   └── logger.ts
 │   │   └── providers/
 │   │       ├── base.provider.ts
 │   │       ├── provider.registry.ts
-│   │       ├── algolia/
-│   │       │   ├── algolia.mapper.ts
-│   │       │   ├── algolia.types.ts
-│   │       │   └── algolia.provider.ts
-│   │       ├── commercetools/
-│   │       │   ├── commercetools.mapper.ts
-│   │       │   ├── commercetools.types.ts
-│   │       │   └── commercetools.provider.ts
-│   │       ├── gcp/
-│   │       │   ├── gcp.mapper.ts
-│   │       │   ├── gcp.types.ts
-│   │       │   └── gcp.provider.ts
-│   │       ├── opensearch/
-│   │       │   ├── opensearch.mapper.ts
-│   │       │   ├── opensearch.types.ts
-│   │       │   └── opensearch.provider.ts
-│   │       └── mock/
-│   │           ├── mock.data.ts
-│   │           └── mock.provider.ts
+│   │       ├── mock/
+│   │       │   ├── mock.data.ts
+│   │       │   └── mock.provider.ts
+│   │       └── example/
+│   │           ├── example.mapper.ts
+│   │           ├── example.types.ts
+│   │           └── example.provider.ts
 │   ├── services/
 │   │   ├── search.service.ts
 │   │   ├── personalization.service.ts
-│   │   └── tracking.service.ts
+│   │   ├── tracking.service.ts
+│   │   └── example.service.ts
 │   ├── bootstrap.ts
 │   ├── server.ts
 │   └── index.ts
 ├── test/
-│   ├── fixtures/
-│   │   ├── algolia-search-response.json
-│   │   └── commercetools-search-response.json
 │   ├── integration/
-│   │   ├── search-pipeline.test.ts
-│   │   └── tracking-pipeline.test.ts
-│   ├── load/
-│   │   └── k6-search-benchmark.js
+│   │   └── api-smoke.test.ts
 │   └── unit/
 │       ├── experiment-evaluator.test.ts
-│       ├── mappers.test.ts
-│       └── provider-registry.test.ts
+│       └── mock-provider.test.ts
 ├── .env.example
 ├── package.json
 ├── tsconfig.json
@@ -930,43 +909,28 @@ We use **Zod** to guarantee that the application fails fast at startup if requir
 ```typescript
 // src/config/env.ts
 
-import { z } from 'zod';
-import dotenv from 'dotenv';
+import { z } from "zod";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().default(3000),
-  HOST: z.string().default('0.0.0.0'),
-  DEFAULT_PROVIDER: z
-    .enum(['algolia', 'commercetools', 'gcp_vertex_search', 'opensearch', 'mock'])
-    .default('mock'),
+	NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+	PORT: z.coerce.number().default(3000),
+	HOST: z.string().default("0.0.0.0"),
+	DEFAULT_PROVIDER: z.enum(["mock", "example"]).default("mock"),
 
-  // Redis Cache & Session
-  REDIS_URL: z.string().url().default('redis://localhost:6379'),
+	// Redis Cache & Session
+	REDIS_URL: z.string().default("redis://localhost:6379"),
 
-  // Algolia (Optional unless default or selected)
-  ALGOLIA_APP_ID: z.string().optional(),
-  ALGOLIA_API_KEY: z.string().optional(),
-  ALGOLIA_INDEX_NAME: z.string().optional(),
+	// Analytics Sinks
+	POSTGRES_URL: z.string().optional(),
+	CLICKHOUSE_USER: z.string().default("default"),
+	CLICKHOUSE_PASSWORD: z.string().optional(),
 
-  // Commercetools (Optional)
-  COMMERCETOOLS_PROJECT_KEY: z.string().optional(),
-  COMMERCETOOLS_CLIENT_ID: z.string().optional(),
-  COMMERCETOOLS_CLIENT_SECRET: z.string().optional(),
-  COMMERCETOOLS_AUTH_URL: z.string().optional(),
-  COMMERCETOOLS_API_URL: z.string().optional(),
-
-  // Analytics Sinks
-  CLICKHOUSE_HOST: z.string().optional(),
-  CLICKHOUSE_DB: z.string().default('default'),
-  CLICKHOUSE_USER: z.string().default('default'),
-  CLICKHOUSE_PASSWORD: z.string().optional(),
-
-  POSTGRES_URL: z.string().optional(),
-  GA4_MEASUREMENT_ID: z.string().optional(),
-  GA4_API_SECRET: z.string().optional(),
+	POSTGRES_URL: z.string().optional(),
+	GA4_MEASUREMENT_ID: z.string().optional(),
+	GA4_API_SECRET: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
@@ -982,10 +946,10 @@ export const env = envSchema.parse(process.env);
   ├── Fastify skeleton, Zod validation, Unified DTOs, Mock Provider, Error Handler
   │
   Phase 2: Core Adapter Pipeline (Days 4-7)
-  ├── BaseSearchProvider with CircuitBreaker, Algolia & Commercetools Mappers + Providers
+  ├── BaseSearchProvider with CircuitBreaker, Provider Registry & Example Provider Template
   │
   Phase 3: Resilient Analytics Subsystem (Days 8-10)
-  ├── Traced `searchId` propagation, Batching Dispatcher, ClickHouse & Postgres Sinks
+  ├── Traced `searchId` propagation, Batching Dispatcher, PostgreSQL & Example Sinks
   │
   Phase 4: Session Personalization Engine (Days 11-13)
   ├── Redis Session Affinity store, `/v1/track` feedback loop, Dynamic Query Boost mapper
@@ -1009,16 +973,14 @@ export const env = envSchema.parse(process.env);
 #### Phase 2: Provider Adapters & Circuit Breaking
 
 - Implement `BaseSearchProvider` with `opossum` circuit breaking and `AbortSignal` timeouts.
-- Implement `AlgoliaSearchProvider` and `AlgoliaMapper` with disjunctive faceting.
-- Implement `CommercetoolsSearchProvider` with Product Projections search mapping.
+- Implement `ExampleSearchProvider` and `ExampleMapper` as the reference template for third-party integrations.
 - Implement `SearchProviderRegistry` with automatic fallback routing upon vendor outage.
 
 #### Phase 3: Analytics Infrastructure & Correlation Engine
 
 - Implement high-precision `searchId` generator attached to every query.
 - Create `AnalyticsDispatcher` with in-memory ring buffer and micro-batch flushing.
-- Implement `ClickHouseSink` and `PostgresSink` with auto-migration schema scripts.
-- Implement `GA4Sink` and `PlausibleSink` for external telemetry dispatch.
+- Implement `PostgresAnalyticsSink` and `ExampleAnalyticsSink` with asynchronous batch dispatching.
 
 #### Phase 4: Personalization & Real-Time Feedback Loop
 
@@ -1030,7 +992,7 @@ export const env = envSchema.parse(process.env);
 #### Phase 5: Deterministic A/B Testing Engine
 
 - Implement `ExperimentEvaluator` using MurmurHash3 across `PROVIDER`, `QUERY_REWRITE`, and `RANKING_BOOST` scopes.
-- Register test experiments (e.g. Algolia vs Commercetools 50/50 split).
+- Register test experiments (e.g. Mock vs Example provider 50/50 split).
 - Ensure all experiment tags propagate to search responses and downstream analytics events.
 
 #### Phase 6: Production Hardening, Observability & Containerization
@@ -1077,46 +1039,46 @@ CMD ["node", "dist/index.js"]
 ### 11.2 Docker Compose Development Environment
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
-  search-api:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    ports:
-      - '3000:3000'
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - REDIS_URL=redis://redis:6379
-      - CLICKHOUSE_HOST=http://clickhouse:8123
-      - DEFAULT_PROVIDER=mock
-    depends_on:
-      - redis
-      - clickhouse
-    restart: unless-stopped
+    search-api:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        ports:
+            - "3000:3000"
+        environment:
+            - NODE_ENV=development
+            - PORT=3000
+            - REDIS_URL=redis://redis:6379
+            - CLICKHOUSE_HOST=http://clickhouse:8123
+            - DEFAULT_PROVIDER=mock
+        depends_on:
+            - redis
+            - clickhouse
+        restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
+    redis:
+        image: redis:7-alpine
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis-data:/data
+        command: redis-server --appendonly yes
 
-  clickhouse:
-    image: clickhouse/clickhouse-server:latest
-    ports:
-      - '8123:8123'
-      - '9000:9000'
-    volumes:
-      - clickhouse-data:/var/lib/clickhouse
-      - ./docker/init-clickhouse.sql:/docker-entrypoint-initdb.d/init.sql
+    clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        ports:
+            - "8123:8123"
+            - "9000:9000"
+        volumes:
+            - clickhouse-data:/var/lib/clickhouse
+            - ./docker/init-clickhouse.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
-  redis-data:
-  clickhouse-data:
+    redis-data:
+    clickhouse-data:
 ```
 
 ---

@@ -7,7 +7,7 @@
 	"scripts": {
 		"dev": "tsx watch src/index.ts",
 		"build": "yarn check:types && yarn check:lint && tsc && tsc-alias",
-		"start": "yarn build && node dist/index.js",
+		"start": "node dist/index.js",
 		"check:types": "tsc --noEmit",
 		"check:lint": "oxlint src --deny-warnings",
 		"test": "vitest run",
